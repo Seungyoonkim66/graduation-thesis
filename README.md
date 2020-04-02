@@ -1,6 +1,6 @@
 # graduation-thesis
 
-<h4> Sungkyunkwan University <h4>
+<h3> Sungkyunkwan University <h3>
 <p> Library and Information Science & Software <p>
 <p> 2017310301 Kim Seungyoon <p>
 
