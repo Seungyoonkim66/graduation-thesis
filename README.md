@@ -9,8 +9,7 @@ Starting from March. 23. 2020
 ====================================================
 <body>
 <h2> Sungkyunkwan University <h2>
-<h2> Library and Information Science & Software <h2>
-<h2> 2017310301 Kim Seungyoon <h2>
+<h2> Library and Information Science & Software 2017310301 Kim Seungyoon <h2>
 
 ====================================================
   
