@@ -13,8 +13,8 @@ Starting from March. 23. 2020
 
 <p> Starting from March 2020 <p>
   
-  progrss: 날짜별 진행 상황
-  papers: 배경 지식을 위해 관련 논문 읽고 정리한 것
-  results: 실험 결과 및 관련 자료 
-  meeting: 매주 미팅 로그 
+<p> progrss: 날짜별 진행 상황 \n
+  papers: 배경 지식을 위해 관련 논문 읽고 정리한 것\n
+  results: 실험 결과 및 관련 자료 \n
+  meeting: 매주 미팅 로그\n <p>
 
