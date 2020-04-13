@@ -1,0 +1,103 @@
+	1. Abstract
+	• 다중 소켓 구조에서는 NUMA를 사용한다. locally cached된 data에 대한 접근이 remote보다 훨씬 빠르다.
+	• NUMA-aware locks: remote에 대한 캐시 미스와 remote socket 간 통신을 줄인다 (lock 소유권이 local에 머무를 수 있도록 한다.)
+	- 일정 비율의 메모리 공간이 필요하다 
+	• compact NUMA-aware locks: one word memry를 필요로 한다. 
+	- MCS lock의 변형으로 local spinning과 sigle atomic instruction과 같은 MCS lock의 특성을 그대로 가지고 있다. 
+	- 두개의 ready queue로 구성된다. 하나는 현재 lock을 소유한 스레드와 같은 소켓 내부에서 대기하는 스레드를 담고, 다른 하나는 해당 소켓 외부의 소켓에서 대기하는 스레드를 담는다. 
+	- user-space에 새로운 lock을 구현하고 linux kernel의 qspinlock(benchmark)을 통합시킨다. 
+
+	2. Introduction
+	• socket수의 증가, locally attached memory, fast local cache, multi processing core -> locks evolution
+	• NUMA의 특징: 
+	- local에 대한 접근은 빠르나 remote에 대한 접근은 느리다.
+	-> NUMA-aware locks 제안됨 (locally lock hold만 유지되도록 함)
+	-> remote cache miss, inter-socket communication 감소 / lock chance 증가, locally cached 공유 데이터
+	- 소켓 하나당 a set of local, 계층적 
+	-> lock 경쟁이 없을 떄에도 low level의 lock을 얻기 위해 multi atomic operation을 수행해야 한다. (비효율적)
+	-> 실행 중에 시스템이 몇 개의 소켓으로 구성되어 있는지 알 수 없기 때문에 초기화시에 동적 할당을 해야 한다. 
+	-> 소켓의 개수대로 메모리 공간을 필요로 한다.  (공간 비효율) (그래서 어떤 시스템들은 lock을 위한 공간을 엄격하게 제한하기도 한다)
+	• NUMQ-oblivious locks: one word 이하의 메모리로 구현가능 
+	• lock이 많은 시스템일수록 lock을 위한 메모리 공간 할당이 중요한 이슈이다. 
+	-> compact NUMA-aware lock이 제안되었다. (CNA)
+	• CNA : socket의 개수와 상관 없이 one word만 필요로 한다. 
+	- lock 하나당 하나의 atomic instruction을 필요로 한다. 
+	**MCS lock 의 고효율 버전 - MCS (lock대기를 위한 queue를 만들고 lock이 이용가능해질때까지 local cache line에서 spin)
+	- 대기 큐에서 다음 차례의 스레드에 lock을 넘기는 것이 아니라 같은 socket의 스레드로 lock을 넘긴다. 
+	- 만약 외부 socket에 다음 대기 스레드가 있다면 두번째 큐로 간다. (첫번쨰 큐에 대기하는 스레드가 없을 경우, local handover의 일정 수준이 지난 후) 
+	• 본 논문에서는 CNA를 사용하기 위해 리눅스 커널의 qspinlock을 수정하였다. (user-space microbenchmark, multiple real application, several kernel microbenchmarks를 이용한 CNA)
+	
+	3. related work 
+	• test-and-set lock: 
+	- 간단한 spin lock / atomic instruction 으로 반복 실행
+	- lock을 하면 lock상태를 나타내는 값 return
+	- one word memory로 구현 가능
+	- global spinning 사용 (여러 스레드가 같은 메모리 공간에 대한 lock 대기)
+	-> coherence traffic, unfairness
+	• MCS 에서 사용하는 lock: 공유 상태의 lock은 queue의 tail에 대한 포인터를 가지고 있다. 각 스레드는 queue node를 차지하고, 해당 node에서 unlock이 될때까지 locally spinning을 한다. -> 경쟁 상태에서 global spinning보다 빠른 lock handover / NUMA 친화적 
+	• hierarchical backoff lock (HBO) : 동일 소켓 내부에서 lock을 유지하기 위해서 제안됨 
+	- one word memery - lock holder의 socket number을 저장  
+	- 스레드가 unlock을 발견하면 -> back off = 0  (소켓 내부) 1 (소켓 외부)
+	-> global spinning
+	-> 외부 소켓의 스레드에 대한 starvation 발생 가능, lock 경쟁 발생 
+	-> one 이상의 word memory를 사용한 HBO 알고리즘 제안 
+	-> 완전히 해결 불가능, backoff timeout에 대한 최적화 필요 
+	• NUMA-aware locks 차후 버전 : 계층 동기화 구조 사용, 소켓마다 소켓 내부 동기화를 위한 구조 사용 = lock cohorting tech.
+	• HMCS = hierachical MCS lock: 계층의 각 레벨이 MCS lock에 의해 보호받는 lock 
+	• HierarchicalNUMA-awarelocks: 소켓구조는 다른 캐시라인에 위치해야 false sharing 방지, scalability
+	h-lock은 mutli instruction이 필요하기 때문에 경쟁이 없는 상태에서는 성능이 좋지 않다. 
+	• Hierarchical NUMA-aware CST lock : 처음으로 lock이 접근될때까지 각 소켓의 할당을 미룬다. (스레드가 일부 소켓에서 실행될 수 있도록 제한되는 경우에 유용하다) / 소켓의 수와 차지하는 메모리 용량이 비례한다.
+
+	4. Background linux kernel spin lock 
+	• 현재 구현된 spin lock: multi-path, test-and-set lock으로 fast path / MCS lock으로 slow path 구현 
+	• 4-byte lock word = lock value + pending bit + queue tail 
+	• 스레드가 spin lock을 얻으면 -> lock value = 1로 set
+	1로 set하려 했지만 실패해서 계속 0이면 lock hold실패 
+	lock 경쟁이 없으면 스레드는 자동으로 pending bit을 1로 set 하고, spinning하며 lock이 풀리길 기다린다. 
+	lock 경쟁이 있으면 스레드는 slow path로 전환한다 -> MCS큐로 진입해서 head로 갈때까지 대기한다. (lock holder가 나가거나 pending bit에서 spinning 하는 스레드가 나갈때까지)
+	즉, lock value와 pending bit이 모두 0 일때까지 기다린다.
+	스레드가 lock을 요구하면 자동적으로 lock value를 1로 set하려고 한다. 그리고 MCS 큐에 있는 다음 스레드의 flag에 write한다. -> MCS 큐에 있는 스레드가 head 에 있다는 것을 알리는 write 
+	unlock한 스레드는 lock value = 0 으로 set -> fast path에서는 unlock하면서 queue node까지 release하지 않아도 된다. (리눅스 커널에서 MCS 큐는 4개로 제한됨)
+	모든 큐 노드는 동시에 미리 정적 할당 될 수 있고, 전체 lock word를 4 byte로 쪼개  tail pointer을 위한 encoding이 공간적, 시간적으로 효율적이다. 
+	• CNA lock: slow path를 위해 사용된다.
+
+	5. design of the CNA lock 
+	• MCS: 두개의 큐로 구성됨 (main - lock holder 스레드와 같은 소켓에 있는 스레드 대기를 위한 큐 / secondary - 다른 소켓에서 실행중인 스레드 대기를 위한 큐)
+	• 스레드가 CNA lock을 얻으려면 항상 main 큐에 먼저 진입해야 한다. 그리고 나서 다른 소켓에서 실행되는 lock holder에 의해 보조큐로 이동한다. 
+	-> 두개의 큐가 필요하지만 CNA lcok의 공유 상태는 one single word  = tail로 이루어진다. 
+	CNA lock을 얻기 위해서 보조노드가 필요하다.
+	스레드는 tail pointer가 atonomically (instruction) 보조 노드로 swapping 하면서 메인 큐로 들어가게 된다. / 보조노드는 큐의 다음 node를 가리키는 next field를 포함한다. 
+	• spin field는 스레드가 spinning을 하면 1로 set 된다. (큐에서 해당 스레드보다 우선순위의 스레드가 CS 를 빠져나와 unlock을 하고 lock의 소유를 해당 스레드로 넘기면 spin field 에 변화가 발생한다.)
+	• CNA와 MCS의 lock function은 거의 동일하다
+	• CNA unlock function은 다르다 : lock을 단순히 다음 스레드로 넘기는 것이 아니라 현재 lock holder h가 메인큐를 탐색하고, 동일한 소켓 내부에서 실행중인 스레드를 찾는다. 만약 동일 소켓에 실행중인 스레드 h'가 있다면 h' 스레드와 현재 lock holder 스레드 사이의 모든 스레드를 메인 큐에서 보조 큐로 옮기고 h'가 lock을 가져간다. (h'가 속한 node의 spin field change!) 
+	** 즉, CNA에서 lock을 가져간 스레드의 node에서 spin field는 change! 
+	• 현재 락 홀더 스레드 h는 보조 큐의 head에서 다음 lock holder가 될 스레드로 포인터를 옮긴다. 이렇게 하면 현재 락 홀더 다음의 락 홀더 스레드가 다름 락을 보조 큐에 있는 스레드로 넘길 수 있다. (만약 메인 큐가 비어있다면)
+	=> spin field의 재사용 접근법 : h'에 대한 lock을 writing하지 않고, 
+	• h' 큐 노드에 포인터를 또 다른 필드에 넣었다가 h'이 다음 락 홀더 스레드를 위한 포인터를 복사하는 대안도 있다.  =  store instruction이 추가적으로 필요하다. h 가 보조 큐 head 에 대한 포인터를 h'의 spin으로 옮겨서 h'으로 lock넘길 수 있다. 
+	• 보조 큐의 스레드가 메인로 가서 lock을 얻는 방법에 대한 논의가 남아 있다.
+	- (현재 락 홀더 h가 동일 소켓에서 실행되는 메인 큐에서 스레드를 발견하지 못하면, 보조큐의 tail에 포인터를 두고, 보조큐의 첫번째 노드에 lock을 넘긴다.  -> 보조큐를 효율적으로 비울 수 있다. / 보조 큐 tail을 찾기 위해선 보조큐의 처음부터 스캔해야 하기 때문에 보조큐가 너무 길면 비효율적이다.
+	=> 최적화: 보조큐의 tail 포인터를 해당 큐의 head에 속한 node에 저장하고 tail pointer를 노드가 메인 큐에서 보조큐로 이동할 때 사용한다.
+	- 공정성 보장에 관한 점: 같은 소켓에 있는 스레드가 계속해서 lock을 얻으려고 하여 메인큐에 들어오면 다른 소켓에 있는 스레드에 대한 starvation이 발생한다. 
+	-> CNA는 주기적으로 보조 큐에 있는 스레드를 메인 큐로 옮긴다. 
+	
+	6. implementatiom detail 
+	• CNA lock 구조 구현 
+	: Queue 구조 - spin - socket - secondary tail -  next
+	- socket: 어떤 소켓에서 실행 중인지 나타냄 
+	- spin : 1이면 lock hold , 0 이면 lock waiting  
+	=> spin=1/lock hold하면 CS 진입 가능, 메인 큐 탐색하여 같은 소켓에 실행 중인 스레드 발견 현 락홀더 스레드와 발견된 스레드 사이에 있는 모든 스레드들은 다 다른 소켓에서 실행 중 이라는 것을 알 숭 있으니까 그 스레드들은 보조 큐로 보내고, secondary tail 필드로 보조 큐로간 스레드들 간의 연결을 한다. 
+	현재 lock holder = t1 , 같은 소켓의 다음 스레드 = t4
+	t1은 t4의 spin 필드에 보조큐 head를 가리키는 포인트를 write하면서 락을 전달한다. t4는 동일 소켓 내부의 다른 스레드의 spin 필드에 t4의 스핀 필드를 복사하여 전달하면서 락도 전달한다.
+	그동안과 다른 소켓에서 실행되는 스레드 t7이 메인 큐로 들어온다 -> 실행되던 스레드가 CS를 나오고, 다른 소켓에서 실행되는 메인큐에 있는 스레드가 보조큐의 끝으로 이동한다. 보조큐의 seondary tail은 end of 보조큐를 가리키도록 업데이트 된다. 그리고 락은 next 필드가 set된 다음 스레드로 넘어간다. 
+	더 이상 메인큐에 같은 소켓에서 실행되는 스레드가 없으면 현재 락 홀더 스레드는 보조큐의 노드들을 메인 큐로 돌아오게 한다.
+	• MCS와 다른 CNA의 코드 
+	- 메인 큐에 대기하는 스레드가 없으면 spin을 1 로 바꾸고 lock 
+	- 스레드가 실행 중인 현 소켓의 번호와 노드 구조를 초기화한다.
+	- unlock 과정에서 다음 스레드에 1을 전달하면서 lock을 전달한다.
+	- unlock function: 메인 큐에 다음 스레드가 없고, 보조큐에 노드가 없다면 tail을 null로 set한다 = 메인 큐와 보조큐 모두 비었다는 것을 의미한다.
+	- CAS(compare and swap) instruction: 메인큐에 다음 스레드가 있는지 확인하고 보조큐의 노드 여부에 따라 tail을 업데이트 하는 동안 스레드가 메인 큐에 들어가지 않도록 하기 위해 필요한 명령어 / 
+	- 메인 큐가 비어있지 않다면 현재 락 홀더 스레드는 다음 락 홀더 스레드를 결정한다. = find_successor함수 
+	다음 스레드가 같은 소켓에 있다면 next로 확정  (메인큐를 탐색하여 같은 소켓에서 실행중인 스레드를 찾는다 = h => lock 전달, 다음 스레드의 spin필드 = 1 / 없으면 보조큐의 head로 전달
+	h와 현재 락홀더 다음의 스레드 사이 (즉 2, 3 순위)의 모든 노드들을 보조 큐로 옮긴다. 옮길 스레드가 없으면 NULL을 반환한다. 
+	
+	•
