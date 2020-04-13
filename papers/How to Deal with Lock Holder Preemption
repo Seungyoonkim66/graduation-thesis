@@ -1,0 +1,30 @@
+	1. spinlock을 사용하는게 성능향상에 도움이 되는 경우
+  
+	• interrupt handler에서 blocking이 안되는 경우
+	• context switching 이 시간을 많이 소요하는 경우
+	-> 기다리는 프로세스를 sleep 시키지 않고 spinning하면서 대기
+	해당 프로세스가 CS를 아주 잠깐 사용하는 경우 context switching이 실제 CS 사용 시간보다 길면 비효율적 
+	- VCPU가 pesudo-parallel execution을 할때  PCPU에서 하나의 프로세스로 타임퀀텀을 갖는다. 타임퀀텀이 끝나면 선점당하고 진행중이던 상태 saving.
+	
+  2. lock holder preemption:
+	• If a VCPU is preempted inside the guest kernel while holding a spinlock, this lock stays acquired until the VCPU is executed again. 
+	• vm에서 spinlock을 가지고 있는 상태로 VCPU가 선점당하면 해당 VCPU가 다시 스케줄링을 통해 실행될때까지 spinlock을 계속 가지게 있게 된다. 그동안 다른 vcpu가 lock 을 가질 수 없는 문제 발생 
+	- 다른 vcpu는 타임퀀텀을 다 소모해서 선점당했지만 여전히 spinlock을 가지고 있는 vcpu 실행이 다 끝날때까지 기다려야 한다.
+	- 두개 이상의 vcpu가 하나의 pcpu에서 동시 실행될 경우에 발생한다.
+	- spinlock = active waiting -> vcpu를 기다리는 cpu 시간 낭비됨
+	- cpu bound vcpu에 의해 선점되는 lock은 최소한 주어진 타임퀀텀까지는 유지된다. -> lock을 기다리는 다른 vcpu는 spnning = busy waiting하면서 최소한 그 시간동안은 기다린다.
+	- 대부분의 대기 시간은 lock holder preemption에 의해 발생되는 대기들에 의해 생긴다.
+	(spinlock을 기다리는데 소모되는 시간)
+	
+  3. Tolerating Lock Holder Preemption
+	<lock holder preemption 피하는 방법>
+	• spinlock은 오직 kernel안에서만 사용된다 / 커널 내부에는 거의 대부분 하나 이상의 spinlock이 잡혀있다 / spinlock은 커널이 떠나기 전에 풀린다. -> vcpu의 선점에 의한 delay가 사용자에게 반환되기까지 커널 공간에서 실행된다 (이게 무슨 말이지)
+	• 긴 대기(unusually long wait)를 탐지하고, lock holder preemption에 걸리지 않을 것 같은 vcpu로 바꿔야 한다. / lock holder preemption을 switch해야 한다. -> lock을 잡고 있는 vcpu가 CS를 끝내고 lock을 풀어주게 하기 위해서
+	특정 프로세스보다 기다리는 시간이 길면 hyper call을 발생시켜 spinlock backoff code를 확장시킨다 -> vmm에게 unusually long wait 를 알린다. hypercall을 reception한 vmm은 다른 vcpu를 스케줄링한다. (커널모드에 있는 vcpu를 우선적으로 선점한다.)
+	vmm은 shadow paging request를 handling하기 위해 충분한 시간이 필요하다.
+	
+  4. FIFO Ticket spinlocks 
+	• fairness 개선된 버전 
+	• lock에 도착한 순서대로 스레드에 lock을 할당한다.
+	• lock 경쟁 -> FIFO 로 선점 
+	• 실행 시간 개선 
