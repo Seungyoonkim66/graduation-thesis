@@ -1,0 +1,14 @@
+  
+<3월 31일 화요일 14시 면담>
+ 
+- 학부연구생 정기 미팅 
+  : 매주 화요일 14시 27315
+
+- KCC'20 논문 : spinlock 관련 주제 선정
+
+<To do list>
+•  간단한 NUMA(Non-Uniform Memory Access) 구조의 특징(메모리 접근 속도 등)
+•  Spinlock 공부 (Ticket spinlock 및 MCS lock(qspinlock))
+•  리눅스의 CPU 스케줄링 기법 (CFS, Completely Fair Scheduling)
+
+- 참고자료를 바탕으로 NUMA, spinlock 공부해가기 
