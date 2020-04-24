@@ -1,0 +1,54 @@
+	1. introduction
+	
+	• 하나의 하드웨어에 CPU 수가 늘어남 
+	-> 하나의 가상머신이 여러개의 vCPU를 가지게 됨. 
+	(컴퓨터 하드웨어 자원의 활용성 up!)
+	• 가상 환경에서 double scheduling 현상
+	- vCPU에서 운영체제가 프로세스 스케줄링 (OS스케줄러)
+	- pCPU에서 하이퍼바이저가 vCPU 스케줄링 (하이퍼바이저 스케줄러)
+	=> 문제 발생:
+	kernel preemption이 불가능해진 뒤에도 가상 환경에서 spinlock holder가 preempted
+	-> 다른 vCPU가 같은 lock을 기다림 -> synchronization latency 발생
+	-> 성능저하
+	이러한 spinlock holder preemition으로 인한 성능저하는 대부분의 vCPU 스케줄러에서 보인다. 
+	>> co-scheduling, demand-based coordinated scheduling 등장 : synchronization latenct reduceing
+	>> balance scheduling 등장
+	• 두 개의 스케줄링간 semantic gap을 감소시키기 위한 방법 제안 
+	-> 각 가상머신의 vCPU 개수 최소화하여 vCPU를 스케줄링하는 하이퍼바이저의 간섭을 최소화하는 것. 
+	=> vCPU ballooning scheme : 가상머신 상의 vCPU의 개수를 동적으로 조절하는 것. 
+	-> overcommitment 에서 vCPU수를 최소화시킴 -> scalability 병목현상감소
+	
+	• KVM의 CFS와 같은 스케줄링 기법은 무엇이 실행되고 있는지와 관계 없이 vCPU선점을 허용한다.
+	-> double scheduling에 의한 문제
+	: vCPU preemtion, vCPU stacking 
+	
+	• vCPU Preemption
+	lock을 가진 vCPU가 하이퍼바이저에 의해 preempted 되었을 때, 같은 lock을 기다리는 다른 vCPU가 소모하는 synchronization 시간이 심각하게 증가할 것이다. 
+	**lock holder = pCPU0에 있는 vCPU0이 preempted, pCPU1에 있는 vCPU1이 그 lock을 기다림 
+	>>그런데 vCPU0은 pCPU0이 vCPU을 다시 스케줄링줄때까지 기다려야 한다. 그때 vCPU1도 함께 기다려야 하고 이것은 sychronization 시간을 더 증가시킨다.  vCPU1은 pCPU1이 lock holder를 위해 spin하게 만든다. 
+	
+	• vCPU stacking
+	스케줄러는 vCPU가 모든 pCPU에서 스케줄링될 수 있도록 한다. 
+	-> vCPU stacking발생 
+	-> lock을 기다리는 vCPU가 같은 pCPU상의 lock holder전에 스케줄링 된다..?
+	** vCPU0의  lock holder preempted > vCPU1의 lock waiter는 같은 pCPU상에서 vCPU0이전에 스케줄링된다.(0>1>0..) > 다른 pCPU에 있는 vCPU1은 lock을 얻기 위해 Tlock wait만큼 기다려야 한다.  
+	
+	
+	• co-scheduling: 같은 SMP 가상 머신의 vCPU를 동시에 스케줄링한다.
+	가상 머신의 모든 vCPU를 동시에 할당한다.
+	
+	>> 모든 스레드를 다 실행시킬만큼 충분한 수의 pCPU를 갖는 것이 간단한 해결책 = 즉, vCPU 수 < pCPU 수
+	>> vCPU preemption, stacking 모두 방지 
+	CPU fragmentation, priority inversion발생 ㅠㅠ
+	** CPU fragmentation: lock holder vCPU가 preempted되면 lock waiter도 preempted되는 것 
+	
+	• Balance scheduling: 서로 다른 pCPU상의 가상머신의 vCPU를 분산시켜 vCPU를 동시에 스케줄링하지 못하게 한다.
+	즉, 같은 가상머신의 vCPU들이 같은 pCPU 큐에 쌓이지 않도록 하여 stacking 방지 (preemption 해결 X)
+	• demand-based scheduling: inter-processor interrupts (IPIs)를 적용하여 double scheduler로 인한 semantic gap을 줄이려는 스케줄링 기법
+	-> 급한 vCPU에 높은 우선순위를 부여하여 우선순위 inversion이 발생할 수 있다. 
+	<-> 게스트 os의 IPI기반  coordination implementation에 최적화되어 있어 spin based synchronization detection은 지원하지 못한다.
+	
+	• 게스트 os(가상 머신의 os)
+	: 하이퍼바이저는 lock hold (preemption delay) or wait (spinning) 시킴 
+	**  일정 정도 돌고나면 spinning 중단 >> LHP 방지 
+	 >>  lock waiter가 선점할 수 있게 한다. 
