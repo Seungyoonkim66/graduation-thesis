@@ -1,0 +1,97 @@
+	• FxMark = open source benchmark 
+	파일시스템에 stress -> scalability 측정
+	파일시스템의 scalability 병목 현상 발견
+	• IO intensive application을 설계할때 scalability를 어떻게 고려해야 하는지에 대해 알려주는 논문 
+	• 예를 들어 디렉토리에서는 모든 연산이 연산의 종류와 상관없이 순차적으로 이루어진다. 하지만 파일은 update가 동시에 수행될 수 없다. 
+	-> 기존 파일시스템의 scalability(확장성) 문제를 확인하고, 이 문제를 해결할 수 있는 방안에 대해 연구한다.
+	• scalability: 어떤 크기나 용량이 확장 되었을때 원래의 기능이 제대로 작동하는 것. 
+	
+	1. Introduction
+	• parallelizing 입출력 연산 (멀티 cpu에서 동시에 입출력 처리) -> 입출력 성능 향상 
+	• concurrent 입출력 연산 구현 (single cpu에서 순차적으로 실행하지만 동시에 실행되는 것처럼 입출력 연산을 하는 것/ time sharing)  -> 파일시스템도 concurrenet 입출력 지원을 위한 변화 
+	• parallelizing io operation이 중요해진 요인:
+	스토리지 디바이스의 성능 향상 
+	멀티코어의 발달 (코어 개수 계속해서 증가)
+	데이터베이스가 크고 좋은 성능을 갖게되면서 멀티코어 환경도 지원
+	• manycore scalability 
+	입출력 연산의 영향을 우회하는 메모리 파일 시스템을 사용하는 연구 진행중
+	대부분의 입출력 성능은 확장성 병목 현상을 겪는다. 
+	evaluate the scalability -> FxMark 벤치마크 사용 
+	(stressing each blocks of file system - IO intensive한 application에 benchmark ( ex mail service, NoSQL keyvalue stor, file server) )
+	2. Case study  - Exim mail system 
+	• io intensive application
+	• parellel하게 메시지 처리하면서도 각 처리 과정의 독립성을 보장한다. 
+	• Exim은 다중 코어로 확장했을때 실패가 자주 발생한다. 
+	• 코어 개수가 많아질수록 파일 시스템의 throughput이 떨어진다. 
+	
+	**fine-grained: 대상을 세밀한 요소로 나눠서 고려하는 것
+	• fine-grained locks는 scalability를 방해한다. 
+	너무 세밀한 lock - cpu 시간을 많이 잡아 먹는다 ex btrfs
+	• 사소한 경쟁  ex) 두 종류의 lock을 사용하는 것 
+	journaling은 spinlock을 쓰고, dir update는 mutex를 쓴다. 
+	spinlock과 mutex가 interleaved하게 사용된다. 
+	• 파일시스템의 scalability를 측정하기 위해 적절한 benchmark 필요하다
+	= FxMark
+	
+	
+	3. FxMark Benchmark 
+	• 19 microbenchmark - scalability 병목현상을 체계적으로 확인하기 위해 설계
+	• io intensive application의 scalability bottlenecks 측정에 적합 
+	1) microbenchmarks
+	• 대부분 병목현상은 단계적으로 해결이 가능하고, 그 병목현상은 몇 개 안됨
+	• 파일시스템의 확장성 문제를 확인하기 위해 설계된 마이크로벤치마크는 파일시스템의 7가지 요소에 stress를 준다.
+	: path name resolution, page cache for buffered IO, inode manamgement, disk block management, file offset to disk block mapping, dir management, consistency guarantee mechanism 
+	• microbenchmark 의 3종류: stressed fata types, related file system operation, contention level of file system(여기서 말하는 경쟁 레벨은 마이크로벤치마크가 여러개의 코어와 많은 양의 코드를 공유하는 수준을 말한다.)
+	• FxMaek가 reading data blovk에 제공하는 벤치마크
+	- contention level low - 벤치마크 프로세스 내부의 private file에서 data block 읽기
+	- contention level medium - 벤치마크 프로세스 중에 shared file에서 private data block 읽기
+	- contention level high - shared file에서 same data block 읽기 
+	** 4letters로 마이크로벤치마크 표시 
+	ex - DRBL/M/H = Data, Read, Block read, Low/Medium/High
+	• scalability를 측정하기 위해 각 벤치마크는 파일시스템 관련 연산에서 지정된 하나의 cpu에서 독자적인 프로세스로 run
+	ex) 각 벤치마크는 최대 80 cpu에서 run 
+	
+	4. Application Benchmarks 
+	- mail server(Exim): message transfer 과정에서의 프로세스 두개 중 하나 제거하여 확장성 병목현상 완화
+	- NoSQL DB(RockDB) - use db-bench
+	- Filr server - DBENCH tool 사용 
+
+	5. Performance profiling 
+	• 벤치마크가 실행되면서 FxMark는 sys, user, idle, iowait에 대한 cpu활용도 수집한다.
+	-> 각 요소의 stress에 대한 파일 시스템의 반응을 살핀다. 
+	ex) high idle time = 해당 마이크로벤치마크의 연산이 확장성을 방해한다. / lock을 기다리는 것이 방해요소 중 하나
+	high iowait time = 스토리지 디바이스가 문제
+	
+	6. summary of benchmarks
+	• 파일 시스템에서 자주 등장하는 scalability bottlenecks 25
+	- 너무 높은 지역성은 오히려 성능을 저하시킬 수 있다. 
+	- rename()은 transcational update를 위해 사용되는데 이 연산은 system 수준에서 완전히 serialized하게 수행된다 (not interleaved)
+	- dir에서 read 연산은 순차적으로 수행된다. 
+	- 파일은 concurrent하게 갱신될 수 없다. 
+	- metadata changes는 확장될 수 없다. 예를들어  파일 생성, 삭제, 확장, 축소 are not scalable in linux
+	- overwriting은 appending 만큼 expensive하다. / overwrtie = append
+	- scalability is not portable 
+	- non-scalability often means wasting CPU cycles. 파일 시스템에서 concurrent 연산은 lock에 의해 조절된다. non-scalable 파일시스템은 경쟁을 완화하기 위해 CPU cycle을 더 소모한다. 
+
+	7. Is it possible for traditional file system to be used and implemented in a scalable way?
+	scalability 문제의 주 원인: shared cache line contention, reference counting, coarse-grained locking 등
+	- consistency mechanism이 필요하다 
+	(journaling, log-structured writing, copy on write 에서의 consistency 매커니즘 = scalability bottleneck)
+	= journaling file system ) journal 트랜잭션을 commt하는 것은 파일시스템의 일관성을 보장한다. 따라서 journal 트랜잭션에 접근하는 것은 scalability bottleneck이다. 
+	= copy-on-write 기법은 B-tree와 같은 자료구조와 결합되어 있다. 이러한 파일구조는 scalability에 취약하다. 예를 들어 두개의 독립적인 갱신은 하나의 lock을 두고 경쟁을 해야 하는데 이로 인한 locking overhead가 있다. 또한 이로 인해 deadlock이 생길 수도 있다. 
+	- spatial locality는 여전히 고려되어야 한다. 파일 시스템의 파티셔닝은 경쟁을 감소켜 scalability를 향상시킨다. 
+
+	8. Related work
+	• Benchmarking file system 
+	파일 시스템의 복잡성과 다양한 요소 (페이지 캐시, on-disk fragmentation, 디바이스 특정)의 상호작용으로 인해 파일 시스템 벤치마크는 criticized
+	**FxMark는 파일 시스템의 manycore scalability에만 초점을 맞춘다.
+	• scaling OS을 개선시키기 위한 많은 연구들이 있다. 파일시스템의 서비스는 결국 application을 일부이기 때문에 결국 그것의 manycore scalability는 오직 각각의 application에 의존한다. 
+	• scaling file system을 하기 위해 대부분 lock contention을 줄이고자 한다.
+	• 스토리지 스택 최적화  
+
+
+	9. Summary 
+	https://silvertonconsulting.com/blog/2016/06/24/testing-filesystems-for-cpu-core-scalability/
+	
+	https://m.blog.naver.com/PostView.nhn?blogId=epicure_time&logNo=220747239308&proxyReferer=https:%2F%2Fwww.google.com%2F
+	-한국어버전
