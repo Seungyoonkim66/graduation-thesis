@@ -1,0 +1,9 @@
+<4월 20일>
+
+VM 내부에서 fxMark로 NUMA-aware lock patch 적요한 경우와 적용하지 않은 경우 성능 비교 
+
+virsh list --all (시스템에 등록된 VM 나열)
+virsh start vmInstance (vmInstance 라는 이름을 가진 VM 실행)
+virsh destroy vmInstance
+virsh dumpxml vmInstance (xml configuration 출력)
+virsh edit vmInstance (xml 수정)
