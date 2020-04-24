@@ -1,0 +1,16 @@
+http://jake.dothome.co.kr/spinlock/
+
+	1. spinlock: critical section 
+	(CS)에 프로세스의 동시 접근 금지 수단 
+	spinlock holder cpu는 CS에서 preemption이 일나지 않으면 스케줄링이 일어나지 않아 스레드 context swithcing이 일어나지 않는다. 
+	-> 다른 스레드가 해당 CS에 접근할 수 없다.
+	
+	2. Non-preemption spinlock 
+	spinning하는 동안 preemption을 방지하기 위해 CS 앞 뒤에 preempt_disable()과 preempt_enable()명령어로 보호 받도록 한다. (CS의 컨디션을 check하며 busy waiting)
+
+	3. Lock Holder Preemption (LHP)
+	"If a VCPU is preempted inside the guest kernel while holding a spinlock this lock stays acquired until the VCPU is executed again" 
+	lock이 spinning하는 동안에는 preemption을 금지하지 않는다. 
+	spinlock이 오랫동안 spin wait될 수 밖에 없을 떄에 preemption이 가능하게 하는 구조로 preemption latency를 줄일 수 있어 real time applicatoin에 효과적이다. 
+	(VCPU 가 guest kernel에서 spinlock을 hold하고 있는 동안 선점당하면 hold 된 lock 해당 VCPU가 다시 실행될때까지 이 lock을 가지고 있기 때문에 그 사이에 다른 스레드가 lock을 가져갈 수 없다. 
+
