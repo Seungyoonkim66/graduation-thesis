@@ -1,0 +1,21 @@
+CPU model:
+Intel Xeon Silver 4116 (12 cores) * 2
+
+Memory:
+DDR4 32GB * 2
+
+Cache:
+L1 -32KiB(L1I, L1D) / L2 -1MB / LLC -16.5MiB
+
+OS:
+Ubuntu 18.04 LTS(Host OS & Guest OS)
+
+Each Node:
+12 vCPUs, 10GB memory
+
+Guest benchmark:
+FxMark benchmark – MWRL workload 
+
+KVM 하이퍼바이저를 이용하였고, 24개의 vCPU와 10GB 메모리를 할당한 노드 2개로 구성된 가상머신을 활용하였습니다. 
+실험은 단일 가상머신과 다중 가상머신 각 환경에서 FxMark 벤치마크의 MWRL 워크로드를 이용하여 NUMA 기반 최적화 락인 CNA 락과 리눅스의 기본 락인 qspinlock의 성능을 비교했습니다. 
+
