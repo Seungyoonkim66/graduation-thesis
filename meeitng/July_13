@@ -1,0 +1,10 @@
+2020년 7월 13일 오전 11시 오프라인 미팅 
+
+[Coordinated and Efficient Huge Page Management with Ingens]
+읽고 정리한 자료:
+https://www.notion.so/Coordinated-and-Efficient-Huge-Page-Management-with-Ingens-a04ce99fe56e42cbb4b12b8dba3ad6a0
+
+To do list
+- Redundant Memory Mappings for Fast Access to Large Memories 공부하고 정리하기
+- huge page 사용 장단점 숙지하기 
+- transparent huge page, hugetlbfs 보충하기 
