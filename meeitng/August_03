@@ -1,0 +1,13 @@
+2020년 8월 3일 월요일 오후2시 오프라인 미팅 
+
+1. [HawkEye: Efficient Fine-grained OS Support for Huge Pages] 공부하고 정리한 자료: 
+   https://www.notion.so/HawkEye-Efficient-Fine-grained-OS-Support-for-Huge-Pages-028ca8ce8b3443818b3d4dd549325e07
+   
+2. ftrace 공부하고 정리한 자료: 
+   https://www.notion.so/ftrace-7c5f3ed19b544c5d8bd94958f88bbaa9
+   
+   
+<To do List>   
+1. ftrace 코드 추가해서 page fault 발생 횟수랑 latency 분석하기 
+2. 8월 17일 미팅 -> 18일로 변경 
+3. huge page 내의 base page의 hotness 측정하는 방법 생각해보기 
