@@ -1,0 +1,12 @@
+2020년 8월 10일 월요일 오후 2시 오프라인 미팅 
+
+1. [Making Huge Pages Actually Useful] 공부하고 정리한 자료 
+  : https://www.notion.so/Making-Huge-Pages-Actually-Useful-07b23f9e1339470aa3cdf4d1c7611aee
+
+2. ftrace로 page fault latency 분석하기 -> progress 
+
+
+To do list
+1. [Perforated Page: Supporting Fragmented Memory Allocation for Large Pages] 공부하고 정리하기
+2. 새로운 실험 시작하기 
+3. 커널 공부할때 참고하기 좋은 블로그 : http://jake.dothome.co.kr/
