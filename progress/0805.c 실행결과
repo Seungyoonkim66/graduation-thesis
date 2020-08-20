@@ -1,0 +1,111 @@
+0805.c
+
+./0805 -m (메모리 크기) -t (스레드 개수)
+
+1. (m,t) = (1,1)
+
+    1) THP 활성화
+
+     average page fault time : 1.87847 microsecs
+
+    after echo "always" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 1.5714 microsecs
+
+    2) THP 비활성화
+
+    average page fault time : 1.83915 microsecs
+
+    after echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 1.79323 microsecs
+
+2. (m,t) = (5,1)
+
+    1) THP 활성화
+
+     average page fault time : 1.66424 microsecs
+
+    after echo "always" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time :  1.60306 microsecs
+
+    2) THP 비활성화
+
+    average page fault time : 1.79188 microsecs
+
+    after echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 2.01453 microsecs
+
+3. (m,t) = (5,12)
+
+    1) THP 활성화
+
+     average page fault time : 0.798839 microsecs
+
+    after echo "always" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 0.667436 microsecs
+
+    2) THP 비활성화
+
+    average page fault time :  microsecs
+
+    after echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 0.562111 microsecs
+
+4. (m,t) = (10,1)
+
+    1) THP 활성화
+
+     average page fault time : 1.75024 microsecs
+
+    after echo "always" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 1.85184 microsecs
+
+    2) THP 비활성화
+
+    average page fault time : 1.73554 microsecs
+
+    after echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 1.98813 microsecs
+
+5. (m,t) = (10,4)
+
+    1) THP 활성화
+
+     average page fault time : 1.46946 microsecs
+
+    after echo "always" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 1.52186 microsecs
+
+    2) THP 비활성화
+
+    average page fault time : 1.48445 microsecs
+
+    after echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 1.47785 microsecs
+
+6. (m,t) = (10,12)
+
+    1) THP 활성화
+
+     average page fault time : 1.05875 microsecs
+
+    after echo "always" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 0.987232 microsecs
+
+    2) THP 비활성화
+
+    average page fault time : 1.00398 microsecs
+
+    after echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
+
+    average page fault time : 1.04561 microsecs
