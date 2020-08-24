@@ -1,0 +1,14 @@
+2020년 8월 24일 월요일 오후 2시30분 오프라인 미팅 
+
+1. [Prudent Memory Reclamation in Procrastination-Based Synchronization] 공부하고 정리한 자료
+    : https://www.notion.so/Prudent-Memory-Reclamation-in-Procrastination-Based-Synchronization-957f717ea559442eaf986b617d05f2c2
+2. [가상화 환경에서의 NUMA 기반 락 성능 분석] 다시 공부하고 관련 주제 공부 
+    : https://www.notion.so/NUMA-33bd10bf11864ee59baac58d9c02412a
+3. fileserver graph500 벤치마크 실행 - Anonymous Huge Page 할당량 측정 및 분석
+    : https://www.notion.so/fileserver-graph500-Anonymous-Huge-Page-9a90f2c4b75446668f8c4c4ba76daf73
+    
+<To do list>
+1. KCC 2020 논문 [가상화 환경에서의 NUMA 기반 락 성능 분석] 보충 실험
+2. user space lock 공부하기
+3. fragmentation 실험 delay
+4. 서론, 배경지식 개요 작성 
