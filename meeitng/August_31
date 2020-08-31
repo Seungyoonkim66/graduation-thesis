@@ -1,0 +1,17 @@
+2020년 8월 31일 월요일 오후 2시 오프라인미팅
+
+1. 단일 가상머신에 실험환경 세팅 
+2. 단일 가상머신과 호스트에서 userspace lock - levelDB 실험 
+: https://www.notion.so/KCC2020-c302b7d62a6a40cfb17756c4fa1677bb
+3. 실험 관련 lock 논문 읽고 정리한 자료 (완료X)
+: https://www.notion.so/Scalable-and-Practical-Locking-with-Shuffling-412d978d7c6848b7ad3b1915d7e51fa7
+
+<To do list>
+1. 단일 가상머신에서 cna-spinlock으로만 levelDB 다시 실행시켜보기
+2. 다중 VM에서 leveldb 실행시켜보기  
+  vm1에서는 CPU 소모하는 프로그램 돌려놓고, vm2에서 levelDB 실행
+3. vm에서 cna.patch 적용된 버전과 적용되지 않은 버전에서 각각 fxmark와 vbench 실행시키기
+4. vm에서 수행 후 같은 실험을 호스트에서 실행시키기
+5. 논문 개요에 살 붙이기
+6. shfflock 논문 evaluation 부분 읽어보기
+7. 유사한 논문 읽어보며 논문 작성 방식 파악하기 
