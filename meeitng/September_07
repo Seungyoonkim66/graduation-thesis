@@ -1,0 +1,15 @@
+2020년 9월 7일 월요일 오후 2시 오프라인 미팅
+
+1. [가상화 환경에서의 NUMA 기반 락 성능 분석] 서론, 배경지식 작성
+2. 호스트와 게스트에 kernel spce lock 실험 환경 setting  
+  - linux-5.3.12-generic, linux-5.3.12-cna 커널 컴파일 
+  - fxmark 설치 및 실행 환경 설정 
+3. 호스트에서 fxmark 벤치마크를 활용하여 cna lock과 stock lock 성능 분석
+
+<To do list>
+1. 금요일까지 투고 논문 전체 개요 작성
+2. 단일 VM, 다중 VM 환경에서 fxmark로 cna lock과 stock lock 성능 분석
+3. 64코어에서 2와 같은 실험 수행
+4. 배경지식에 numa-aware lock 설명에 shfllock 추가 
+5. vCPU 선점 문제 + numa-aware lock 동시에 보여줄 수 있는 그림 
+6. 커널 스페이스 락 실험 호스트 게스트 모두 코어 16, 20 인 경우 결과 추가 
